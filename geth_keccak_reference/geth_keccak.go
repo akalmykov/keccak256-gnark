@@ -31,5 +31,10 @@ func Keccak256(data ...[]byte) []byte {
 }
 
 func main() {
-	fmt.Println(hex.EncodeToString(Keccak256([]byte("hello world"))))
+	s := make([]byte, 136)
+	for i := range s {
+		s[i] = 0
+	}
+	fmt.Println(len(s), s)
+	fmt.Println(hex.EncodeToString(Keccak256(s)))
 }
