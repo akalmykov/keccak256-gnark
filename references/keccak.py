@@ -4,7 +4,7 @@ from Crypto.Hash import keccak
 if __name__ == "__main__":
     k = keccak.new(digest_bits=256)
     # k.update(b'hello world')
-    k.update(bytearray([0 for i in range(136)]))
+    k.update(bytearray([0 for i in range(136*2)]))
     hexdigest = k.hexdigest()
     print(hexdigest)
     print("--- hex (8 bytes groups):")
@@ -44,3 +44,9 @@ if __name__ == "__main__":
 # 1 = {uint64} 5060325603602923236
 # 2 = {uint64} 13719438169146432634
 # 3 = {uint64} 17952996403488429372
+
+# 136*2 of zeros
+# uint64  0: 14102500177593761960
+# uint64  1: 1751238265316416354
+# uint64  2: 10191991164706561650
+# uint64  3: 9074021743222020896

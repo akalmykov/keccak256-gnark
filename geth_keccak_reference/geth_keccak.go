@@ -31,7 +31,7 @@ func Keccak256(data ...[]byte) []byte {
 }
 
 func main() {
-	s := make([]byte, 136)
+	s := make([]byte, 136*2)
 	for i := range s {
 		s[i] = 0
 	}
