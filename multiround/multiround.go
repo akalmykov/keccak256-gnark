@@ -8,6 +8,15 @@ import (
 	"github.com/consensys/gnark/std/permutation/keccakf"
 )
 
+// PLAN:
+// Develop a circuit pad(input []frontend.Variable, byteLength int) that:
+//		- takes the last (len(input)%17) and stores the rest somewhere
+//		- use ToBinary to decompose this^ into bits
+// 		- pad the bitstring with 10*1 starting from 8*byteLength
+//		- group the result into blocks of 64 (use FromBinary?)
+//		- return []frontend.Variable where each frontend.Variable is a uint64
+// Pass this (and the first 17*n Variables) to the circuit we've already written.
+
 const inputSize = 17 * 5
 
 type NaiveKeccak256Circuit struct {
@@ -17,6 +26,13 @@ type NaiveKeccak256Circuit struct {
 
 func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 	uapi := newUint64API(api)
+
+	// x := api.ToBinary(frontend.Variable(9), 1)
+	// api.Println(x)
+	// y := api.ToBinary(frontend.Variable(9), 4)[0]
+	// api.Println(y)
+	// z := api.ToBinary(frontend.Variable(9), 500)[0]
+	// api.Println(z)
 
 	var state [25]frontend.Variable // 25*64=1600 bit
 	for i := range state {
