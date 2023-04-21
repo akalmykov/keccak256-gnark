@@ -20,8 +20,9 @@ import (
 const inputSize = 17 * 5
 
 type NaiveKeccak256Circuit struct {
-	In       [inputSize]frontend.Variable // (1088 bits)/(64 bits/uint64) = 17 uint64s
-	Expected [4]frontend.Variable         // (256 bits)/(64 bits/uint64) = 4 uint64s
+	In         [inputSize]frontend.Variable // (1088 bits)/(64 bits/uint64) = 17 uint64s
+	ByteLength int
+	Expected   [4]frontend.Variable // (256 bits)/(64 bits/uint64) = 4 uint64s
 }
 
 func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
@@ -72,6 +73,93 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 		api.AssertIsEqual(Z[j], c.Expected[j])
 	}
 	return nil
+}
+
+func PadUint64s101AfterByte(api frontend.API, input []frontend.Variable, byteLength int) []frontend.Variable {
+	// Assumes the input is a list of uint64s.
+	var bytesLeft int = (136 - (byteLength % 136)) % 8
+	var uint64sLeft int = (136 - (byteLength % 136)) / 8
+
+	var bitPad []frontend.Variable
+
+	var firstByte [8]frontend.Variable
+	firstByte[0] = frontend.Variable(1)
+	for i := 1; i < 8; i++ {
+		firstByte[i] = frontend.Variable(0)
+	}
+
+	var middleByte [8]frontend.Variable
+	for i := 0; i < 8; i++ {
+		middleByte[i] = 0
+	}
+
+	var lastByte [8]frontend.Variable
+	for i := 0; i < 7; i++ {
+		lastByte[i] = 0
+	}
+	lastByte[7] = 1
+
+	var firstAndLastByte [8]frontend.Variable
+	firstAndLastByte[0] = 1
+	for i := 0; i < 7; i++ {
+		firstAndLastByte[i] = 0
+	}
+	firstAndLastByte[7] = 1
+
+	if bytesLeft == 1 && uint64sLeft == 0 {
+		bitPad = firstAndLastByte[:]
+	} else if bytesLeft == 2 && uint64sLeft == 0 {
+		bitPad = append(firstByte[:], lastByte[:])
+	} else if bytesLeft == 3 && uint64sLeft == 0 {
+		bitPad = append(append(firstByte[:], middleByte[:]), lastByte[:])
+	} else if bytesLeft == 1 && uint64sLeft != 0 {
+		bitPad = firstByte[:]
+	} else if bytesLeft == 2 && uint64sLeft != 0 {
+		bitPad = append(firstByte[:], middleByte[:])
+	} else if bytesLeft == 3 && uint64sLeft != 0 {
+		bitPad = append(append(firstByte[:], middleByte[:]), middleByte[:])
+	} else {
+
+	}
+
+	var uint64Pad []frontend.Variable
+	var firstUint64 frontend.Variable = frontend.Variable(9223372036854775808)
+	var middleUint64 frontend.Variable = frontend.Variable(0)
+	var lastUint64 frontend.Variable = frontend.Variable(1)
+	var firstAndLastUint64 frontend.Variable = frontend.Variable(9223372036854775809)
+
+	if bytesLeft == 0 && uint64sLeft == 1 {
+		uint64Pad.append(firstAndLastUint64)
+	} else if bytesLeft == 0 && uint64sLeft >= 2 {
+		uint64Pad.append(firstUint64)
+		for i := 0; i < uint64sLeft-2; i++ {
+			uint64Pad.append(middleUint64)
+		}
+		uint64Pad.append(lastUint64)
+	} else if bytesLeft != 0 && uint64sLeft != 0 {
+		for i := 0; i < uint64sLeft-1; i++ {
+			uint64Pad.append(middleUint64)
+		}
+		uint64Pad.append(lastUint64)
+	} else {
+
+	}
+
+	if bytesLeft != 0 {
+		var incompleteUint64 frontend.Variable = input[byteLength/8]
+		var incompleteBits []frontend.Variable = api.ToBinary(incompleteUint64)
+		var completeBits []frontend.Variable = append(incompleteBits[:], bitPad[:])
+		var completeUint64 frontend.Variable = api.FromBinary(completeBits)
+		// TODO: take off the last (incomplete) uint64 of input, then
+		// put completeUint64 at the end.
+	}
+
+	if uint64sLeft != 0 {
+		var output []frontend.Variable = append(input[:], uint64Pad[:])
+	}
+
+	return output
+
 }
 
 func main() {
