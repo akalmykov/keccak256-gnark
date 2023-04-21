@@ -54,7 +54,7 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 	// 1. Do I need to pad to make input a multiple of 17 uints64?
 	//paddingStartIndex := inputSizeInUint64 - 1
 	if inputSizeInUint64%17 > 0 {
-		for i := 0; i < 17-(inputSizeInUint64%17)-1; i++ { // 17 - 13%17 = 14-
+		for i := 0; i < 17-(inputSizeInUint64%17)-1; i++ {
 			paddedPreImage = append(paddedPreImage, uint64(0))
 			api.AssertIsEqual(paddedPreImage[inputSizeInUint64+i], 1)
 		}
@@ -69,7 +69,7 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 	// 1. Do I need to pad with 1 inside the last uint64?
 	emptyBytesInLastUint64 := inputSizeInBytes % 8
 	if emptyBytesInLastUint64 > 0 {
-		lastUint64Binary := api.ToBinary(paddedPreImage[inputSizeInUint64-1], 64)
+		lastUint64Binary := api.ToBinary(c.PreImage[inputSizeInUint64-1], 64)
 		lastUint64Binary[64-(emptyBytesInLastUint64)*8] = 1
 		// 1.1 Do I need to pad with 128 inside the last uint64?
 		if inputSizeInUint64%17 == 0 {
