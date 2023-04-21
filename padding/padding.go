@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-const inputSizeInBytes = 136 // 136 * 2
+const inputSizeInBytes = 777 // 136 * 2
 const inputSizeInUint64 = (inputSizeInBytes + 8 - 1) / 8
 
 // PLAN:
@@ -70,7 +70,8 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 	emptyBytesInLastUint64 := inputSizeInBytes % 8
 	if emptyBytesInLastUint64 > 0 {
 		lastUint64Binary := api.ToBinary(c.PreImage[inputSizeInUint64-1], 64)
-		lastUint64Binary[64-(emptyBytesInLastUint64)*8] = 1
+		// lastUint64Binary[64-(emptyBytesInLastUint64)*8] = 1
+		lastUint64Binary[(emptyBytesInLastUint64)*8] = 1 //150
 		// 1.1 Do I need to pad with 128 inside the last uint64?
 		// api.Println(lastUint64Binary...)
 		if inputSizeInUint64%17 == 0 {
@@ -88,7 +89,7 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 			api.AssertIsEqual(paddedPreImage[inputSizeInUint64+j], 0)
 		}
 		paddedPreImage = append(paddedPreImage, uint64(9223372036854775808))
-		api.AssertIsEqual(paddedPreImage[len(paddedPreImage)-1], uint64(9223372036854775808))
+		api.AssertIsEqual(paddedPreImage[inputSizeInUint64+17-1], uint64(9223372036854775808))
 	}
 	for i := range paddedPreImage {
 		api.Println(fmt.Sprintf("[%d]: ", i), paddedPreImage[i])
@@ -182,10 +183,10 @@ func main() {
 	//assignment.Expected[1] = uint64(6307481890028256528)
 	//assignment.Expected[2] = uint64(12466496089941296042)
 	//assignment.Expected[3] = uint64(12076360432795841956)
-	assignment.Expected[0] = uint64(10889274874113810657)
-	assignment.Expected[1] = uint64(12934716828897239027)
-	assignment.Expected[2] = uint64(12773710668883008014)
-	assignment.Expected[3] = uint64(14027772763826062138)
+	assignment.Expected[0] = uint64(3732967362885092415)
+	assignment.Expected[1] = uint64(16427570061886037838)
+	assignment.Expected[2] = uint64(17338881524367438756)
+	assignment.Expected[3] = uint64(9996068542508481750)
 
 	//var uint64{58, 89, 18, 167, 197, 250, 160, 110, 228, 254, 144, 98, 83, 227, 57, 70, 122, 156, 232, 125, 83, 60, 101, 190, 60, 21, 203, 35, 28, 219, 37, 249}
 
