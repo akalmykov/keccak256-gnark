@@ -5,7 +5,7 @@ if __name__ == "__main__":
     k = keccak.new(digest_bits=256)
     # k.update(b'hello world')
     # 120 bits problem with padding
-    k.update(bytearray([88 for i in range(0)]))
+    k.update(bytearray([0xff for i in range(128)]))
     hexdigest = k.hexdigest()
     print(hexdigest)
     print("--- hex (8 bytes groups):")
