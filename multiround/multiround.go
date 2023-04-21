@@ -28,7 +28,6 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 		for j := 0; j < 17; j++ {
 			state[j] = uapi.fromUint64(uapi.xor(uapi.asUint64(state[j]), uapi.asUint64(c.In[i+j])))
 		}
-		// S = Keccak-f[r+c](S)
 		state = keccakf.Permute(api, state)
 	}
 
