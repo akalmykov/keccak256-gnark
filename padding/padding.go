@@ -10,7 +10,7 @@ import (
 	"github.com/consensys/gnark/std/permutation/keccakf"
 )
 
-const inputSizeInBytes = 141 // 136 * 2
+const inputSizeInBytes = 20 // 136 * 2
 const inputSizeInUint64 = (inputSizeInBytes + 8 - 1) / 8
 
 // PLAN:
