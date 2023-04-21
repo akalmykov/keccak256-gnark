@@ -4,7 +4,8 @@ from Crypto.Hash import keccak
 if __name__ == "__main__":
     k = keccak.new(digest_bits=256)
     # k.update(b'hello world')
-    k.update(bytearray([88 for i in range(20)]))
+    # 120 bits problem with padding
+    k.update(bytearray([88 for i in range(128)]))
     hexdigest = k.hexdigest()
     print(hexdigest)
     print("--- hex (8 bytes groups):")
@@ -24,6 +25,7 @@ if __name__ == "__main__":
         print(f"uint64  {i}: {int.from_bytes(digest[start_i:start_i+(group_by_bytes)], byteorder='little')}")
 
     print(f"0x80 big: {int.from_bytes([0,0,0,0,0,0,0,0x80], byteorder='big')}")
+    print(f"0x80 little: {int.from_bytes([0,0,0,0,0,0,0,0x80], byteorder='little')}") # 9223372036854775808
     print(f"0x80 little: {int.from_bytes([0,0,0,0,0,0,0,0x80], byteorder='little')}") # 9223372036854775808
     print(f"8 1s big: {int.from_bytes([1,1,1,1,1,1,1,1], byteorder='big')}")
     print(f"8 1s little: {int.from_bytes([1,1,1,1,1,1,1,1], byteorder='little')}") # 9223372036854775808

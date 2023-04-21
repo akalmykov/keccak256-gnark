@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/binary"
-	"fmt"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
@@ -10,8 +9,7 @@ import (
 	"github.com/consensys/gnark/std/permutation/keccakf"
 )
 
-const inputSizeInBytes = 20 // 136 * 2
-const inputSizeInUint64 = (inputSizeInBytes + 8 - 1) / 8
+// const inputSizeInBytes = 20 // 136 * 2
 
 // PLAN:
 // Develop a circuit pad(input []frontend.Variable, byteLength int) that:
@@ -23,26 +21,77 @@ const inputSizeInUint64 = (inputSizeInBytes + 8 - 1) / 8
 // Pass this (and the first 17*n Variables) to the circuit we've already written.
 
 type Keccak256Circuit struct {
-	PreImage []frontend.Variable // unit64 array
-	// PreImageSizeInBytes frontend.Variable
-	Hash [4]frontend.Variable // (256 bits)/(64 bits/uint64) = 4 uint64s
+	PreImageByteLength int
+	PreImage           []frontend.Variable  // unit64 array
+	Hash               [4]frontend.Variable `gnark:",public"`
+}
+
+func remainder(api frontend.API, i1 frontend.Variable, i2 frontend.Variable) frontend.Variable {
+	return api.Sub(i1, api.Mul(api.Div(i1, i2), i2))
+}
+
+func padWith0x1(api frontend.API, i1 frontend.Variable, pos frontend.Variable) frontend.Variable {
+	toPad := api.ToBinary(i1, 64)
+	for i := 0; i < 64; i++ {
+		toPad[i] = api.Select(api.Cmp(i, api.Mul(pos, 8)), 1, toPad[i])
+	}
+	return api.FromBinary(toPad...)
+}
+
+func padWith0x80(api frontend.API, i1 frontend.Variable) frontend.Variable {
+	toPad := api.ToBinary(i1, 64)
+	toPad[64-7] = 1
+	return api.FromBinary(toPad...)
 }
 
 func (c *Keccak256Circuit) Define(api frontend.API) error {
 	uapi := newUint64API(api)
+	inputSizeInBytes := c.PreImageByteLength // 136 * 2
+	inputSizeInUint64 := len(c.PreImage)     // (inputSizeInBytes + 8 - 1) / 8
+	//	api.AssertIsLessOrEqual(c.PreImageByteLength, api.Mul(inputSizeInUint64, 8))
 
-	//var in []frontend.Variable
-	//for i := 0; i < (inputSize / 8); i += 1 {
-	//	in = append(in, api.FromBinary(api.ToBinary(c.PreImage[i*8:i+8], 64), 64))
-	//
-	//}
-	// paddedInput := make([]frontend.Variable, inputSizeInUint64)
-
+	//	api.Println("inputSizeInUint64=", inputSizeInUint64)
 	var state [25]frontend.Variable // 25*64=1600 bit
 	for i := range state {
 		state[i] = 0
 		api.AssertIsEqual(state[i], 0)
 	}
+
+	//fillerBytesInLastUint64 := remainder(api, inputSizeInBytes, 8)
+	//indexToPadWith1Selector := api.Cmp(fillerBytesInLastUint64, 0)
+	//lastElementIndex := api.Sub(inputSizeInUint64, 1)
+	//firstAddedElementIndex := inputSizeInUint64
+	//indexToPadWith1 := api.Add(api.Mul(lastElementIndex, indexToPadWith1Selector), api.Mul(firstAddedElementIndex, api.Sub(1, indexToPadWith1Selector)))
+	//
+	//paddedLength := inputSizeInUint64 + 17 - (inputSizeInUint64 % 17)
+	//paddedPreImage := make([]frontend.Variable, paddedLength)
+	//for i := 0; i < inputSizeInUint64; i++ {
+	//	paddedPreImage[i] = c.PreImage[i]
+	//	api.AssertIsEqual(paddedPreImage[i], c.PreImage[i])
+	//}
+	//paddedPreImage[inputSizeInUint64-1] = api.Select(
+	//	api.Cmp(indexToPadWith1, inputSizeInUint64-1),
+	//	paddedPreImage[inputSizeInUint64-1],
+	//	padWith0x1(api, paddedPreImage[inputSizeInUint64-1], fillerBytesInLastUint64))
+	//for i := inputSizeInUint64; i < paddedLength; i++ {
+	//	paddedPreImage[i] = 0
+	//	api.AssertIsEqual(paddedPreImage[i], 0)
+	//}
+	//
+	//paddedPreImage[inputSizeInUint64] = api.Select(
+	//	api.Cmp(inputSizeInUint64, indexToPadWith1),
+	//	padWith0x1(api, paddedPreImage[inputSizeInUint64], 0),
+	//	paddedPreImage[inputSizeInUint64])
+	//
+	//if inputSizeInUint64%17 > 0 {
+	//	paddedPreImage[paddedLength-1] = padWith0x80(api, paddedPreImage[paddedLength-1])
+	//	api.AssertIsEqual(paddedPreImage[paddedLength-1], uint64(9223372036854775808))
+	//} else {
+	//	paddedPreImage[inputSizeInUint64-1] = padWith0x80(api, paddedPreImage[inputSizeInUint64-1])
+	//}
+
+	// 1. Do I need to pad to make input a multiple of 17 uints64?
+	//paddingStartIndex := inputSizeInUint64 - 1
 
 	paddedPreImage := make([]frontend.Variable, inputSizeInUint64)
 	for i := 0; i < inputSizeInUint64; i++ {
@@ -50,9 +99,8 @@ func (c *Keccak256Circuit) Define(api frontend.API) error {
 		api.AssertIsEqual(paddedPreImage[i], c.PreImage[i])
 	}
 
-	// 1. Do I need to pad to make input a multiple of 17 uints64?
-	//paddingStartIndex := inputSizeInUint64 - 1
 	if inputSizeInUint64%17 > 0 {
+		//paddingUint := api.Sub(1, api.Cmp(remainder(api, inputSizeInBytes, 8), 0))
 		for i := 0; i < 17-(inputSizeInUint64%17)-1; i++ {
 			paddedPreImage = append(paddedPreImage, uint64(0))
 			api.AssertIsEqual(paddedPreImage[inputSizeInUint64+i], 0)
@@ -61,7 +109,9 @@ func (c *Keccak256Circuit) Define(api frontend.API) error {
 		api.AssertIsEqual(paddedPreImage[len(paddedPreImage)-1], uint64(9223372036854775808))
 
 		if inputSizeInBytes%8 == 0 {
-			paddedPreImage[inputSizeInUint64-1] = uint64(1)
+			paddedPreImage[inputSizeInUint64] = uint(1) // TODO fix, for 120 bytes
+			//api.Sub(1, api.Cmp(api.Sub(inputSizeInBytes, api.Div(inputSizeInBytes, 8)), 0))
+			// paddedPreImage[inputSizeInUint64] = api.Sub(1, api.Cmp(remainder(api, inputSizeInBytes, 8), 0))
 		}
 	}
 
@@ -90,9 +140,10 @@ func (c *Keccak256Circuit) Define(api frontend.API) error {
 		paddedPreImage = append(paddedPreImage, uint64(9223372036854775808))
 		api.AssertIsEqual(paddedPreImage[inputSizeInUint64+17-1], uint64(9223372036854775808))
 	}
-	for i := range paddedPreImage {
-		api.Println(fmt.Sprintf("[%d]: ", i), paddedPreImage[i])
-	}
+
+	//for i := range paddedPreImage {
+	//	api.Println(fmt.Sprintf("[%d]: ", i), paddedPreImage[i])
+	//}
 	//  0 1 2 3 4 5 6 7
 	// [a,b,c,d,e,0,0,0]
 	// [a,b,c,d,e,1,0,0]
@@ -112,7 +163,7 @@ func (c *Keccak256Circuit) Define(api frontend.API) error {
 		for j := 0; j < 17; j++ {
 			state[j] = uapi.fromUint64(uapi.xor(uapi.asUint64(state[j]), uapi.asUint64(paddedPreImage[i+j])))
 		}
-		api.Println(fmt.Sprintf("i=%d: ", i))
+		//api.Println(fmt.Sprintf("i=%d: ", i))
 
 		// S = Keccak-f[r+c](S)
 		state = keccakf.Permute(api, state)
@@ -129,19 +180,23 @@ func (c *Keccak256Circuit) Define(api frontend.API) error {
 	return nil
 }
 
-func packBytesInFrontendVars(bytes []byte) []frontend.Variable {
+func packBytesInUint64s(bytes []byte) []uint64 {
 	n := len(bytes)
 	uint64Input := make([]uint64, n/8)
 	for i := 0; i < n/8; i += 1 {
 		uint64Input[i] = binary.LittleEndian.Uint64(bytes[i*8 : (i+1)*8])
 	}
-	//uint64Input := (*[inputSizeInBytes / 8]uint64)(unsafe.Pointer(&bytes[0]))[: n/8 : n/8]
 	remainder := make([]byte, n%8)
 	if len(remainder) > 0 {
 		copy(remainder, bytes[:n%8])
 		last64Uint := append(remainder, make([]byte, 8-n%8)...)
 		uint64Input = append(uint64Input, binary.LittleEndian.Uint64(last64Uint))
 	}
+	return uint64Input
+}
+
+func packBytesInFrontendVars(bytes []byte) []frontend.Variable {
+	uint64Input := packBytesInUint64s(bytes)
 	fvs := make([]frontend.Variable, len(uint64Input))
 	for i := range fvs {
 		fvs[i] = uint64Input[i]
@@ -150,13 +205,14 @@ func packBytesInFrontendVars(bytes []byte) []frontend.Variable {
 }
 
 func main() {
-	n := inputSizeInBytes
+	n := 20
 	byteInput := make([]byte, n)
 	for i := range byteInput {
 		byteInput[i] = 88
 	}
 
 	fvInput := packBytesInFrontendVars(byteInput)
+	inputSizeInUint64 := (20 + 8 - 1) / 8
 	//uint64Input := (*[inputSizeInBytes / 8]uint64)(unsafe.Pointer(&byteInput[0]))[: n/8 : n/8]
 	//remainder := make([]byte, n%8)
 	//if len(remainder) > 0 {
@@ -204,10 +260,10 @@ func main() {
 	//assignment.Hash[1] = uint64(6307481890028256528)
 	//assignment.Hash[2] = uint64(12466496089941296042)
 	//assignment.Hash[3] = uint64(12076360432795841956)
-	assignment.Hash[0] = uint64(12647606639247186047)
-	assignment.Hash[1] = uint64(17474989748982194638)
-	assignment.Hash[2] = uint64(3657884091396220289)
-	assignment.Hash[3] = uint64(8832117151962299269)
+	assignment.Hash[0] = uint64(6369296867788652241)
+	assignment.Hash[1] = uint64(6989174940168908071)
+	assignment.Hash[2] = uint64(9770456023708964694)
+	assignment.Hash[3] = uint64(16734836981162548877)
 
 	//var uint64{58, 89, 18, 167, 197, 250, 160, 110, 228, 254, 144, 98, 83, 227, 57, 70, 122, 156, 232, 125, 83, 60, 101, 190, 60, 21, 203, 35, 28, 219, 37, 249}
 
