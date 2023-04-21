@@ -11,7 +11,7 @@ import (
 	"unsafe"
 )
 
-const inputSizeInBytes = 100 // 136 * 2
+const inputSizeInBytes = 136 // 136 * 2
 const inputSizeInUint64 = (inputSizeInBytes + 8 - 1) / 8
 
 // PLAN:
@@ -72,16 +72,27 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 		lastUint64Binary := api.ToBinary(c.PreImage[inputSizeInUint64-1], 64)
 		lastUint64Binary[64-(emptyBytesInLastUint64)*8] = 1
 		// 1.1 Do I need to pad with 128 inside the last uint64?
-		api.Println(lastUint64Binary...)
+		// api.Println(lastUint64Binary...)
 		if inputSizeInUint64%17 == 0 {
 			lastUint64Binary[64-7] = 1
 		}
 		paddedPreImage[inputSizeInUint64-1] = api.FromBinary(lastUint64Binary...)
 	}
-	for i := 0; i < len(paddedPreImage); i++ {
+
+	// if no padding needed, we add an 10*128 padding for 17 uints
+	if inputSizeInBytes%136 == 0 {
+		paddedPreImage = append(paddedPreImage, uint64(1))
+		api.AssertIsEqual(paddedPreImage[inputSizeInUint64], 1)
+		for j := 1; j < 16; j++ {
+			paddedPreImage = append(paddedPreImage, uint64(0))
+			api.AssertIsEqual(paddedPreImage[inputSizeInUint64+j], 0)
+		}
+		paddedPreImage = append(paddedPreImage, uint64(9223372036854775808))
+		api.AssertIsEqual(paddedPreImage[len(paddedPreImage)-1], uint64(9223372036854775808))
+	}
+	for i := range paddedPreImage {
 		api.Println(fmt.Sprintf("[%d]: ", i), paddedPreImage[i])
 	}
-
 	//  0 1 2 3 4 5 6 7
 	// [a,b,c,d,e,0,0,0]
 	// [a,b,c,d,e,1,0,0]
@@ -97,27 +108,15 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 	//	paddedPreImage[i] = c.PreImage[i]
 	//}
 
-	for i := 0; i < inputSizeInUint64; i += 17 {
+	for i := 0; i < len(paddedPreImage); i += 17 {
 		for j := 0; j < 17; j++ {
 			state[j] = uapi.fromUint64(uapi.xor(uapi.asUint64(state[j]), uapi.asUint64(paddedPreImage[i+j])))
 		}
+		api.Println(fmt.Sprintf("i=%d: ", i))
+
 		// S = Keccak-f[r+c](S)
 		state = keccakf.Permute(api, state)
 	}
-
-	//var buf [17]frontend.Variable
-	//buf[0] = 1
-	//api.AssertIsEqual(buf[0], 1)
-	//for j := 1; j < 16; j++ {
-	//	buf[j] = 0
-	//	api.AssertIsEqual(buf[j], 0)
-	//}
-	//buf[16] = uint64(9223372036854775808) // [0,0,0,0,0,0,128] in little endian
-	//api.AssertIsEqual(buf[16], uint64(9223372036854775808))
-	//for j := 0; j < 17; j++ {
-	//	state[j] = uapi.fromUint64(uapi.xor(uapi.asUint64(state[j]), uapi.asUint64(buf[j])))
-	//}
-	//state = keccakf.Permute(api, state)
 
 	var Z [4]frontend.Variable
 	for j := 0; j < 4; j++ {
@@ -134,7 +133,7 @@ func main() {
 	n := inputSizeInBytes
 	byteInput := make([]byte, n)
 	for i := range byteInput {
-		byteInput[i] = 0
+		byteInput[i] = 88
 	}
 	uint64Input := (*[inputSizeInBytes / 8]uint64)(unsafe.Pointer(&byteInput[0]))[: n/8 : n/8]
 	remainder := make([]byte, n%8)
@@ -179,10 +178,14 @@ func main() {
 	//uint64  2: 12466496089941296042
 	//uint64  3: 12076360432795841956
 
-	assignment.Expected[0] = uint64(15692495994270334865)
-	assignment.Expected[1] = uint64(6307481890028256528)
-	assignment.Expected[2] = uint64(12466496089941296042)
-	assignment.Expected[3] = uint64(12076360432795841956)
+	//assignment.Expected[0] = uint64(15692495994270334865)
+	//assignment.Expected[1] = uint64(6307481890028256528)
+	//assignment.Expected[2] = uint64(12466496089941296042)
+	//assignment.Expected[3] = uint64(12076360432795841956)
+	assignment.Expected[0] = uint64(10889274874113810657)
+	assignment.Expected[1] = uint64(12934716828897239027)
+	assignment.Expected[2] = uint64(12773710668883008014)
+	assignment.Expected[3] = uint64(14027772763826062138)
 
 	//var uint64{58, 89, 18, 167, 197, 250, 160, 110, 228, 254, 144, 98, 83, 227, 57, 70, 122, 156, 232, 125, 83, 60, 101, 190, 60, 21, 203, 35, 28, 219, 37, 249}
 
