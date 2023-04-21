@@ -21,4 +21,22 @@ The sponge construction consists of three phases:
 
 ### Padding
 
-In the original Keccak specification, any number of bits can be used as input.  In Ethereum, the input is actually an array of bytes.  
+In the original Keccak specification, any number of bits can be used as input, called the message.  The message must then be padded to a number of bits which is a multiple of *r*.  In the version of Keccak256 used by Ethereum, the input is actually an array of bytes. The Keccak-f[1600] permutation circuit we used worked on uint64s, or blocks of eight bytes each.  In order to closely model Ethereum's Keccak256, we needed to assume that the prover would input their message as an array of bytes.  Which meant that for the first phase, we had to do the following:
+1. Pad the message with enough bytes to equate to a multiple of 1088 bits, i.e. 136 bytes or 17 uint64s.
+2. Convert the message into an array of uint64s, for use in the Keccak-f[1600] permutation circuit.
+
+At the moment, the prover must explicitly pass the number of bytes they wish to input to the circuit builder.  We will try to eliminate this parameter dependence in a later version.
+
+### Absorbing
+
+Once the message is padded and grouped into uint64s, it is chopped into blocks of 17 uint64s each.  The first block is XORed with the 17x64 initial segment of the 25x64 sponge, the sponge is permuted using the Keccak-f[1600] circuit, then the second block is XORed with the sponge, the sponge is permuted, and so on.  The GNARK API ensures that the appropriate constraints are generated for each XOR and permutation in the sponge construction.
+
+### Squeezing
+
+After the absorbing phase is complete, the squeezing phase outputs the first four uint64s (=256 bits).
+
+Why label taking the first four entries as the squeezing phase?  In other Keccak implementations with longer output length, the squeezing phase is more complicated and occurs in multiple rounds.
+
+## Testing the Circuit
+
+To test that the circuit generated the appropriate constraints, we set up a Groth16 proof using GNARK's API, using the examples on https://play.gnark.io/ as a template.
