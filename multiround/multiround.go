@@ -8,11 +8,11 @@ import (
 	"github.com/consensys/gnark/std/permutation/keccakf"
 )
 
-const inputSize = 17 * 5
+const inputSize = 17 * 2
 
 type NaiveKeccak256Circuit struct {
-	In       [inputSize]frontend.Variable // (1088 bits)/(64 bits/uint64) = 17 uint64s
-	Expected [4]frontend.Variable         // (256 bits)/(64 bits/uint64) = 4 uint64s
+	In       []frontend.Variable  // (1088 bits)/(64 bits/uint64) = 17 uint64s
+	Expected [4]frontend.Variable // (256 bits)/(64 bits/uint64) = 4 uint64s
 }
 
 func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
@@ -60,7 +60,7 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 
 func main() {
 	// compiles our circuit into a R1CS
-	var circuit NaiveKeccak256Circuit
+	circuit := NaiveKeccak256Circuit{In: make([]frontend.Variable, inputSize)}
 	ccs, _ := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
 
 	// groth16 zkSNARK: Setup
@@ -68,7 +68,7 @@ func main() {
 
 	// witness definition
 
-	assignment := NaiveKeccak256Circuit{}
+	assignment := NaiveKeccak256Circuit{In: make([]frontend.Variable, inputSize)}
 
 	// 1. Arbitrary length but divisible into 136 byte blocks (17*64 units)
 	// 2. Arbitrary length but divisible into 64 uints (padding needed)
@@ -80,10 +80,10 @@ func main() {
 	for i := range assignment.In {
 		assignment.In[i] = 0
 	}
-	assignment.Expected[0] = uint64(2700785146922948057)
-	assignment.Expected[1] = uint64(16877546023442210549)
-	assignment.Expected[2] = uint64(17561289794945050041)
-	assignment.Expected[3] = uint64(15480597146993018223)
+	assignment.Expected[0] = uint64(14102500177593761960)
+	assignment.Expected[1] = uint64(1751238265316416354)
+	assignment.Expected[2] = uint64(10191991164706561650)
+	assignment.Expected[3] = uint64(9074021743222020896)
 	//var uint64{58, 89, 18, 167, 197, 250, 160, 110, 228, 254, 144, 98, 83, 227, 57, 70, 122, 156, 232, 125, 83, 60, 101, 190, 60, 21, 203, 35, 28, 219, 37, 249}
 
 	witness, _ := frontend.NewWitness(&assignment, ecc.BN254.ScalarField())
