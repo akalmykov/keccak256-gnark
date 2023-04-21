@@ -8,10 +8,9 @@ import (
 	"github.com/consensys/gnark/frontend"
 	"github.com/consensys/gnark/frontend/cs/r1cs"
 	"github.com/consensys/gnark/std/permutation/keccakf"
-	"unsafe"
 )
 
-const inputSizeInBytes = 777 // 136 * 2
+const inputSizeInBytes = 141 // 136 * 2
 const inputSizeInUint64 = (inputSizeInBytes + 8 - 1) / 8
 
 // PLAN:
@@ -23,13 +22,13 @@ const inputSizeInUint64 = (inputSizeInBytes + 8 - 1) / 8
 //		- return []frontend.Variable where each frontend.Variable is a uint64
 // Pass this (and the first 17*n Variables) to the circuit we've already written.
 
-type NaiveKeccak256Circuit struct {
+type Keccak256Circuit struct {
 	PreImage []frontend.Variable // unit64 array
 	// PreImageSizeInBytes frontend.Variable
-	Expected [4]frontend.Variable // (256 bits)/(64 bits/uint64) = 4 uint64s
+	Hash [4]frontend.Variable // (256 bits)/(64 bits/uint64) = 4 uint64s
 }
 
-func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
+func (c *Keccak256Circuit) Define(api frontend.API) error {
 	uapi := newUint64API(api)
 
 	//var in []frontend.Variable
@@ -125,9 +124,29 @@ func (c *NaiveKeccak256Circuit) Define(api frontend.API) error {
 	}
 
 	for j := 0; j < 4; j++ {
-		api.AssertIsEqual(Z[j], c.Expected[j])
+		api.AssertIsEqual(Z[j], c.Hash[j])
 	}
 	return nil
+}
+
+func packBytesInFrontendVars(bytes []byte) []frontend.Variable {
+	n := len(bytes)
+	uint64Input := make([]uint64, n/8)
+	for i := 0; i < n/8; i += 1 {
+		uint64Input[i] = binary.LittleEndian.Uint64(bytes[i*8 : (i+1)*8])
+	}
+	//uint64Input := (*[inputSizeInBytes / 8]uint64)(unsafe.Pointer(&bytes[0]))[: n/8 : n/8]
+	remainder := make([]byte, n%8)
+	if len(remainder) > 0 {
+		copy(remainder, bytes[:n%8])
+		last64Uint := append(remainder, make([]byte, 8-n%8)...)
+		uint64Input = append(uint64Input, binary.LittleEndian.Uint64(last64Uint))
+	}
+	fvs := make([]frontend.Variable, len(uint64Input))
+	for i := range fvs {
+		fvs[i] = uint64Input[i]
+	}
+	return fvs
 }
 
 func main() {
@@ -136,16 +155,18 @@ func main() {
 	for i := range byteInput {
 		byteInput[i] = 88
 	}
-	uint64Input := (*[inputSizeInBytes / 8]uint64)(unsafe.Pointer(&byteInput[0]))[: n/8 : n/8]
-	remainder := make([]byte, n%8)
-	if len(remainder) > 0 {
-		copy(remainder, byteInput[:n%8])
-		last64Uint := append(remainder, make([]byte, 8-n%8)...)
-		uint64Input = append(uint64Input, binary.LittleEndian.Uint64(last64Uint))
-	}
+
+	fvInput := packBytesInFrontendVars(byteInput)
+	//uint64Input := (*[inputSizeInBytes / 8]uint64)(unsafe.Pointer(&byteInput[0]))[: n/8 : n/8]
+	//remainder := make([]byte, n%8)
+	//if len(remainder) > 0 {
+	//	copy(remainder, byteInput[:n%8])
+	//	last64Uint := append(remainder, make([]byte, 8-n%8)...)
+	//	uint64Input = append(uint64Input, binary.LittleEndian.Uint64(last64Uint))
+	//}
 
 	// data := binary.BigEndian.Uint64(mySlice)
-	circuit := NaiveKeccak256Circuit{PreImage: make([]frontend.Variable, inputSizeInUint64)}
+	circuit := Keccak256Circuit{PreImage: make([]frontend.Variable, inputSizeInUint64)}
 	ccs, _ := frontend.Compile(ecc.BN254.ScalarField(), r1cs.NewBuilder, &circuit)
 
 	// groth16 zkSNARK: Setup
@@ -153,7 +174,7 @@ func main() {
 
 	// witness definition
 
-	assignment := NaiveKeccak256Circuit{
+	assignment := Keccak256Circuit{
 		PreImage: make([]frontend.Variable, inputSizeInUint64),
 	}
 
@@ -162,31 +183,31 @@ func main() {
 	// 3. Arbitrary length in bytes
 	// assignment.PreImageSizeInBytes = inputSizeInBytes
 	for i := range assignment.PreImage {
-		assignment.PreImage[i] = uint64Input[i]
+		assignment.PreImage[i] = fvInput[i]
 	}
 	//for i := range assignment.In {
 
 	// convert it to []uint64 ?? => is this ok?
 	// assignment.In = make([]frontend.Variable, 17)
 
-	//assignment.Expected[0] = uint64(14102500177593761960)
-	//assignment.Expected[1] = uint64(1751238265316416354)
-	//assignment.Expected[2] = uint64(10191991164706561650)
-	//assignment.Expected[3] = uint64(9074021743222020896)
+	//assignment.Hash[0] = uint64(14102500177593761960)
+	//assignment.Hash[1] = uint64(1751238265316416354)
+	//assignment.Hash[2] = uint64(10191991164706561650)
+	//assignment.Hash[3] = uint64(9074021743222020896)
 
 	//uint64  0: 15692495994270334865
 	//uint64  1: 6307481890028256528
 	//uint64  2: 12466496089941296042
 	//uint64  3: 12076360432795841956
 
-	//assignment.Expected[0] = uint64(15692495994270334865)
-	//assignment.Expected[1] = uint64(6307481890028256528)
-	//assignment.Expected[2] = uint64(12466496089941296042)
-	//assignment.Expected[3] = uint64(12076360432795841956)
-	assignment.Expected[0] = uint64(3732967362885092415)
-	assignment.Expected[1] = uint64(16427570061886037838)
-	assignment.Expected[2] = uint64(17338881524367438756)
-	assignment.Expected[3] = uint64(9996068542508481750)
+	//assignment.Hash[0] = uint64(15692495994270334865)
+	//assignment.Hash[1] = uint64(6307481890028256528)
+	//assignment.Hash[2] = uint64(12466496089941296042)
+	//assignment.Hash[3] = uint64(12076360432795841956)
+	assignment.Hash[0] = uint64(12647606639247186047)
+	assignment.Hash[1] = uint64(17474989748982194638)
+	assignment.Hash[2] = uint64(3657884091396220289)
+	assignment.Hash[3] = uint64(8832117151962299269)
 
 	//var uint64{58, 89, 18, 167, 197, 250, 160, 110, 228, 254, 144, 98, 83, 227, 57, 70, 122, 156, 232, 125, 83, 60, 101, 190, 60, 21, 203, 35, 28, 219, 37, 249}
 
