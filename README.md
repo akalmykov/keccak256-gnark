@@ -55,3 +55,13 @@ To run unit tests, execute
 ```go test -v``` 
 
 
+## Implementing the Sponge Construction
+
+This project has been done as a submission to Berkeley RDI ZKP/Web3 Hackathon 2023, zkBridge Track, Category 1 (Circuit), Designated Task 1.8.
+
+While working on this project, we
+
+- Learned about differences in Keccak that Ethereum/BNB uses and SHA3 algorithm
+- Got first hand experience with Golang and Gnark framework
+- Performed unit testing with fuzzing, different backends and serialization tests, e.g. Gnark can instantiate "randomized" witnesses and cross check execution result between constraint system solver
+- Learned about optimizing circuits by packing bytes into integers
