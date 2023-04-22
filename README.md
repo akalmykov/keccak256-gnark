@@ -1,6 +1,6 @@
 # keccak256-gnark
 
-keccak256-gnark is a circuit for the Keccak256 hash function, written in GNARK.
+keccak256-gnark is a circuit for the Keccak256 hash function, written in golang using the gnark API.
 
 ## gnark
 
@@ -26,8 +26,6 @@ The sponge construction consists of three phases:
 In the original Keccak specification, any number of bits can be used as input, called the message.  The message must then be padded to a number of bits which is a multiple of *r*.  In the version of Keccak256 used by Ethereum, the input is actually an array of bytes. The Keccak-f[1600] permutation circuit we used worked on uint64s, or blocks of eight bytes each.  In order to closely model Ethereum's Keccak256, we needed to assume that the prover would input their message as an array of bytes.  Which meant that for the first phase, we had to do the following:
 1. Pad the message with enough bytes to equate to a multiple of 1088 bits, i.e. 136 bytes or 17 uint64s.
 2. Convert the message into an array of uint64s, for use in the Keccak-f[1600] permutation circuit.
-
-At the moment, the prover must explicitly pass the number of bytes they wish to input to the circuit builder.  We will try to eliminate this parameter dependence in a later version.
 
 ### Absorbing
 
@@ -62,12 +60,12 @@ This project has been done as a submission to Berkeley RDI ZKP/Web3 Hackathon 20
 While working on this project, we
 
 - Learned about differences in Keccak that Ethereum/BNB uses and SHA3 algorithm
-- Got first hand experience with Golang and Gnark framework
+- Got first hand experience with Golang and gnark framework
 - Performed unit testing with fuzzing, different backends and serialization tests, e.g. Gnark can instantiate "randomized" witnesses and cross check execution result between constraint system solver
 - Learned about optimizing circuits by packing bytes into integers
 
 Future work:
 
-- Compile Keccak256 Gnark circuit and execute proving in a browser as WASM module
+- Compile Keccak256 gnark circuit and execute proving in a browser as WASM module
 - Verify a proof on a Solidity and Move smart contracts
 - Benchmark against Circom and Halo2 implementations
