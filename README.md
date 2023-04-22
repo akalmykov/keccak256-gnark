@@ -14,6 +14,8 @@ Essentially, Keccak is made of two components: a permutation and a sponge constr
 
 Fortunately, there is already a circuit to perform the Keccak-f[1600] permutation as part of the gnark library.  This takes in an array of 25 frontend.Variables, considered as uint64s, and returns an array of 25 frontend.Variables.  While the Keccak-f[1600] permutation can be defined at the level of bits, in fact the bits are grouped into a 5x5 grid of lanes, which are 64 bits long each (5x5x64 = 1600): thus the use of 64-bit integers.  What remained for us was to build a circuit for the sponge construction, using the Keccak-f[1600] permutation circuit.
 
+## Implementing the Sponge Construction
+
 The sponge construction consists of three phases:
 1. Padding
 2. Absorbing
