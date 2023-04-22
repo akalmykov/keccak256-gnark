@@ -65,3 +65,9 @@ While working on this project, we
 - Got first hand experience with Golang and Gnark framework
 - Performed unit testing with fuzzing, different backends and serialization tests, e.g. Gnark can instantiate "randomized" witnesses and cross check execution result between constraint system solver
 - Learned about optimizing circuits by packing bytes into integers
+
+Future work:
+
+- Compile Keccak256 Gnark circuit and execute proving in a browser as WASM module
+- Verify a proof on a Solidity and Move smart contracts
+- Benchmark against Circom and Halo2 implementations
