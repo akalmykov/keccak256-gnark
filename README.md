@@ -39,7 +39,7 @@ Why label taking the first four entries as the squeezing phase?  In other Keccak
 
 ## Testing the Circuit
 
-To test that the circuit generated the appropriate constraints, we set up a Groth16 proof using GNARK's API, using the examples on https://play.gnark.io/ as a template.  We designed tests in `keccak_test.go`, in which our `TestAllBackends` function uses fuzzing.
+To test that the circuit generated the appropriate constraints, we set up a Groth16 proof using the gnark API, using the examples on https://play.gnark.io/ as a template.  We designed tests in `keccak_test.go`, in which our `TestAllBackends` function uses fuzzing.
 
 
 Use 
