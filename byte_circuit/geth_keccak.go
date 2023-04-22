@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
-	"fmt"
 	"golang.org/x/crypto/sha3"
 	"hash"
 )
@@ -28,13 +26,4 @@ func Keccak256(data ...[]byte) []byte {
 	}
 	d.Read(b)
 	return b
-}
-
-func main() {
-	s := make([]byte, 20)
-	for i := range s {
-		s[i] = 88
-	}
-	fmt.Println(len(s), s)
-	fmt.Println(hex.EncodeToString(Keccak256(s)))
 }
