@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/binary"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend/groth16"
 	"github.com/consensys/gnark/frontend"
@@ -21,15 +20,14 @@ func padWith0x1(api frontend.API, i1 frontend.Variable, pos int) frontend.Variab
 }
 
 func (c *Keccak256Circuit) Define(api frontend.API) error {
-	uapi := newUint64API(api)
 	inputSizeInBytes := len(c.PreImage)
-	inputSizeInUint64 := (inputSizeInBytes + 8 - 1) / 8
 
 	var state [25]frontend.Variable
 	for i := range state {
 		state[i] = 0
 	}
 
+	inputSizeInUint64 := (inputSizeInBytes + 8 - 1) / 8
 	paddedPreImageLength := inputSizeInUint64 + 17 - (inputSizeInUint64 % 17)
 	paddedPreImage := make([]frontend.Variable, paddedPreImageLength)
 	for i := 0; i < inputSizeInUint64; i++ {
@@ -58,6 +56,7 @@ func (c *Keccak256Circuit) Define(api frontend.API) error {
 	toPad[63] = 1
 	paddedPreImage[paddedPreImageLength-1] = api.FromBinary(toPad...)
 
+	uapi := newUint64API(api)
 	for i := 0; i < len(paddedPreImage); i += 17 {
 		for j := 0; j < 17; j++ {
 			state[j] = uapi.fromUint64(uapi.xor(uapi.asUint64(state[j]), uapi.asUint64(paddedPreImage[i+j])))
@@ -65,30 +64,10 @@ func (c *Keccak256Circuit) Define(api frontend.API) error {
 		state = keccakf.Permute(api, state)
 	}
 
-	var Z [4]frontend.Variable
 	for j := 0; j < 4; j++ {
-		Z[j] = state[j]
-	}
-
-	for j := 0; j < 4; j++ {
-		api.AssertIsEqual(Z[j], c.Hash[j])
+		api.AssertIsEqual(state[j], c.Hash[j])
 	}
 	return nil
-}
-
-func packBytesInUint64s(bytes []byte) []uint64 {
-	n := len(bytes)
-	uint64Input := make([]uint64, n/8)
-	for i := 0; i < n/8; i += 1 {
-		uint64Input[i] = binary.LittleEndian.Uint64(bytes[i*8 : (i+1)*8])
-	}
-	remainder := make([]byte, n%8)
-	if len(remainder) > 0 {
-		copy(remainder, bytes[:n%8])
-		last64Uint := append(remainder, make([]byte, 8-n%8)...)
-		uint64Input = append(uint64Input, binary.LittleEndian.Uint64(last64Uint))
-	}
-	return uint64Input
 }
 
 func main() {

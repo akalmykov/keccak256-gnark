@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/binary"
 	"github.com/consensys/gnark-crypto/ecc"
 	"github.com/consensys/gnark/backend"
 	"github.com/consensys/gnark/frontend"
@@ -8,23 +9,23 @@ import (
 	"testing"
 )
 
-//func TestAllBackends(t *testing.T) {
-//	assert := test.NewAssert(t)
-//	preImageByteLength := 20
-//	bytes := createByteArray(preImageByteLength, 88)
-//	hash := packBytesInUint64s(Keccak256(bytes))
-//	assert.ProverSucceeded(&Keccak256Circuit{
-//		PreImage: make([]frontend.Variable, len(bytes)),
-//	}, &Keccak256Circuit{
-//		PreImage: packBytesInFrontendVars(bytes),
-//		Hash: [4]frontend.Variable{
-//			hash[0],
-//			hash[1],
-//			hash[2],
-//			hash[3],
-//		},
-//	}, test.WithCurves(ecc.BN254))
-//}
+func TestAllBackends(t *testing.T) {
+	assert := test.NewAssert(t)
+	preImageByteLength := 20
+	bytes := createByteArray(preImageByteLength, 88)
+	hash := packBytesInUint64s(Keccak256(bytes))
+	assert.ProverSucceeded(&Keccak256Circuit{
+		PreImage: make([]frontend.Variable, len(bytes)),
+	}, &Keccak256Circuit{
+		PreImage: packBytesInFrontendVars(bytes),
+		Hash: [4]frontend.Variable{
+			hash[0],
+			hash[1],
+			hash[2],
+			hash[3],
+		},
+	}, test.WithCurves(ecc.BN254))
+}
 
 func TestEmptyPreimage(t *testing.T) {
 	assert := test.NewAssert(t)
@@ -291,4 +292,19 @@ func packBytesInFrontendVars(bytes []byte) []frontend.Variable {
 		fvs[i] = bytes[i]
 	}
 	return fvs
+}
+
+func packBytesInUint64s(bytes []byte) []uint64 {
+	n := len(bytes)
+	uint64Input := make([]uint64, n/8)
+	for i := 0; i < n/8; i += 1 {
+		uint64Input[i] = binary.LittleEndian.Uint64(bytes[i*8 : (i+1)*8])
+	}
+	remainder := make([]byte, n%8)
+	if len(remainder) > 0 {
+		copy(remainder, bytes[:n%8])
+		last64Uint := append(remainder, make([]byte, 8-n%8)...)
+		uint64Input = append(uint64Input, binary.LittleEndian.Uint64(last64Uint))
+	}
+	return uint64Input
 }

@@ -1,3 +1,4 @@
+// The code is taken from https://github.com/ethereum/go-ethereum/blob/master/crypto/crypto.go
 package main
 
 import (
