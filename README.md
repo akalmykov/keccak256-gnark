@@ -55,7 +55,7 @@ To run unit tests, execute
 ```go test -v``` 
 
 
-## Implementing the Sponge Construction
+## Berkeley RDI ZKP/Web3 Hackathon 2023
 
 This project has been done as a submission to Berkeley RDI ZKP/Web3 Hackathon 2023, zkBridge Track, Category 1 (Circuit), Designated Task 1.8.
 
